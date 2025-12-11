@@ -16,7 +16,12 @@ func main() {
 		_, _ = w.Write([]byte("hi there\n"))
 	})
 
-	handler := rateLimiterMiddleware(mux, limiter.NewSlidingWindow(1, 2)) // 2 reqs per second
+	// handler := rateLimiterMiddleware(mux, limiter.NewSlidingWindow(1, 2)) // 2 reqs per second
+
+	handler := rateLimiterMiddleware(
+		mux,
+		limiter.NewTokenBucket(2.3, 10), // 2.3 tokens per second are regenerated - burst of 10
+	)
 
 	err := http.ListenAndServe("127.0.0.1:8080", handler)
 	if err != nil {
