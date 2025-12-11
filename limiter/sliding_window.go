@@ -13,7 +13,7 @@ type SlidingWindow struct {
 
 var _ RateLimiter = (*SlidingWindow)(nil)
 
-func NewSlidingWindow(window int64, limit int) *SlidingWindow {
+func NewSlidingWindow(window int64, limit int) RateLimiter {
 	return &SlidingWindow{
 		window: window,
 		limit:  limit,
