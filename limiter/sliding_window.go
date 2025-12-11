@@ -2,6 +2,7 @@ package limiter
 
 import (
 	"container/list"
+	"sync"
 	"time"
 )
 
@@ -9,6 +10,7 @@ type SlidingWindow struct {
 	window int64
 	limit  int
 	logs   *list.List // deque // push_back, push_front -> O(1)
+	mu     sync.Mutex
 }
 
 var _ RateLimiter = (*SlidingWindow)(nil)
@@ -18,10 +20,14 @@ func NewSlidingWindow(window int64, limit int) RateLimiter {
 		window: window,
 		limit:  limit,
 		logs:   list.New(),
+		mu:     sync.Mutex{},
 	}
 }
 
 func (s *SlidingWindow) Allow() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	now := time.Now()
 	edgeTime := time.Unix(now.Unix()-s.window, 0)
 
