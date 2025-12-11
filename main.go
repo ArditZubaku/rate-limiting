@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/ArditZubaku/rate-limiting/limiter"
 )
@@ -13,6 +14,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		time.Sleep(3 * time.Second)
 		_, _ = w.Write([]byte("hi there\n"))
 	})
 
@@ -20,7 +22,8 @@ func main() {
 
 	handler := rateLimiterMiddleware(
 		mux,
-		limiter.NewTokenBucket(2.3, 10), // 2.3 tokens per second are regenerated - burst of 10
+		limiter.NewTokenBucket(1, 10), // 2.3 tokens per second are regenerated - burst of 10
+		false,
 	)
 
 	err := http.ListenAndServe("127.0.0.1:8080", handler)
@@ -32,11 +35,17 @@ func main() {
 func rateLimiterMiddleware(
 	next http.Handler,
 	rateLimiter limiter.RateLimiter,
+	enable bool,
 ) http.Handler {
 	// For each ip/client we will a rate limiter
 	ipToLimiterMap := sync.Map{}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !enable {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Get the IP of the client
 		ip := getClientIP(r)
 
@@ -47,8 +56,6 @@ func rateLimiterMiddleware(
 			w.WriteHeader(http.StatusTooManyRequests)
 			return
 		}
-
-		// ipToLimiterMap[ip] = ipLimiter
 
 		next.ServeHTTP(w, r)
 	})
